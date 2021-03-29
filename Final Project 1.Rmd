@@ -1,0 +1,257 @@
+---
+title: "Final Project"
+author: "Martin Ngoh, Daria Lorenzo, Emily Strohm"
+date: "3/11/2021"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr)
+library(plyr)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(orcutt)
+library(stargazer)
+library(scales)
+
+opts_knit$set(root.dir = "c:/Users/Martin/OneDrive/Desktop/Programming Final Project")
+
+
+```
+
+
+### Introduction 
+
+#### Our team was given a set of thirty stocks and tasked with analyzing how each stock is influenced by the political market. We chose to perform this analysis for both Donald Trump and Joe Biden. We selected these two candidates because they won the nominations for each of their parties and became the focus of America’s attention beginning in the summer of 2020 up until election day in November. We chose to start the analysis beginning in June 2020 after Joe Biden won the Democratic nomination for President. These two candidates had over half a year to express their views and ambitions for the country leaving plenty of time for the financial markets to be affected by their words and actions. This report will explain our approach and results for modeling the stock market and various stocks with Trump’s performance and Biden’s.  
+
+
+####  We also looked at each candidate’s probability of winning over time. Figure 1 shows Biden’s probability of winning beginning in June 2020, and Figure 2 shows Trump’s probability of winning for the same time period.  
+
+
+```{r, echo= FALSE, warning=FALSE, message= FALSE}
+stocks <- read.csv("stocks2020.csv")
+
+pres <- read_excel("USPres.xlsx")
+names(pres)[5] <- "date"
+
+
+startDate <- as.Date("2020-06-01")
+
+pres = pres%>% 
+  filter(date > startDate)%>%
+  select(-c(`Market ID`,`Market Name`, `Contract ID`, ...6, `Trade Volume`))
+
+
+
+pres = pres%>%
+  mutate(date = date(pres$date))
+stocks = stocks %>%
+  mutate(date = date(stocks$date))
+  
+  
+tData <- pres%>%
+  filter(`Contract Name` == "Donald Trump")
+
+bData <- pres%>%
+  filter(`Contract Name` == "Joe Biden")
+
+
+tStocks = tData%>%
+  left_join(stocks, by = "date")
+
+
+bStocks = bData%>%
+  left_join(stocks, by = "date")
+
+bStocks%>%
+  ggplot(aes(date,`Average Trade Price`))+
+  geom_point()+
+  geom_smooth(alpha = 0, method = "lm")+
+  labs(x = "June 2020 - December 2020" ,
+       title = "Probability of Winning Over Time for Biden")+
+  ylim(0,1)+
+  scale_x_date(labels = date_format("%b"), limits = c(as.Date("2020-06-01"), 
+                                 as.Date("2020-12-01")), breaks = "1 month")
+
+
+tStocks%>%
+  ggplot(aes(date,`Average Trade Price`))+
+  geom_point()+
+  geom_smooth(alpha = 0, method = "lm", color = "red")+
+  labs(x = "June 2020 - December 2020" ,
+       title = "Probability of Winning Over Time for Trump")+
+  ylim(0,1)+
+  scale_x_date(labels = date_format("%b"), limits = c(as.Date("2020-06-01"), 
+                                 as.Date("2020-12-01")), breaks = "1 month")
+ 
+
+```
+
+
+####  Both candidates hovered around a 50 percent chance of winning prior to October 2020 . This is an interesting revelation because of the many polarizing events that occurred in America during the summer and leading up to election day. Furthermore, the overall state of the economy was in shambles in the United States due to the coronavirus restrictions. Normally, an incumbent president has a better chance of winning if the economy is performing well. However, the state of the economy and other events did not necessarily negatively impact Trump’s bid for a second term since his chances of winning were on par with Joe Biden until a shift occurred beginning in October 2020. The first presidential debate was held on September 29, 2020. Overall, the debate was widely considered to be the worst in American history. Trump made several mistakes and was described as “overly aggressive” which could be the reason why his chances of winning began to decrease while Biden’s chances increased starting in October. 
+
+
+
+#### To further the analysis, we created two models -one for Trump and one for Biden- to analyze how each of the thirty stocks were influenced by the candidate’s political market. We evaluated the relationship between the stock prices and the political markets based on the T-statistic and the R-squared values. 
+
+```{r, echo= FALSE, warning=FALSE, message= FALSE}
+stockName1 <- (bStocks[9:39])
+
+
+
+stocklegnth1 <- (length(stockName1))
+storeB = data.frame(NA, stocklegnth1, 3) 
+colnames(storeB) = c("Stocks Under Biden", "Coefficient", "T-Statistic")
+
+
+count1 = 0
+for (i in 1:31){
+  count1 = count1 + 1 
+     OLS.x1 = lm(stockName1[[i]] ~ `Average Trade Price`, 
+              data = bStocks)
+   storeB[count1,1] = colnames(stockName1[i])
+   storeB[count1,2] = coefficients(summary(OLS.x1))[2,1]
+   storeB[count1,3] = coefficients(summary(OLS.x1))[2,3]
+}
+
+
+lm1 <- lm(CGC ~ `Average Trade Price`, data = bStocks)
+lm2 <- lm(CGC ~ `Average Trade Price`, data = bStocks)
+
+
+storeB%>%
+  arrange(desc(`T-Statistic`))%>%
+  slice(1:4)
+
+
+stockName <- (tStocks[9:39])
+
+stocklegnth <- (length(stockName))
+storeT = data.frame(NA, stocklegnth, 3) 
+colnames(storeT) = c("Stocks Under Trump", "Coefficient", "T-Statistic")
+
+
+count = 0
+for (i in 1:31){
+  count = count + 1 
+     OLS.x = lm(stockName[[i]] ~ `Average Trade Price`, 
+              data = tStocks)
+   storeT[count,1] = colnames(stockName[i])
+   storeT[count,2] = coefficients(summary(OLS.x))[2,1]
+   storeT[count,3] = coefficients(summary(OLS.x))[2,3]
+}
+
+storeT%>%
+  arrange(desc(abs(`T-Statistic`)))%>%
+  slice(1:4) 
+
+
+```
+
+
+```{r, echo= FALSE, warning=FALSE, message= FALSE}
+## FOR TRUMP ###
+
+functionx <- function(x){
+  lm(stockName[[x]] ~ `Average Trade Price`, 
+              data = tStocks)
+}
+
+
+
+stargazer(functionx("CGC"),
+          functionx("AY"),
+          functionx("GOOGL"),
+          functionx("EEM"),
+          type = "text",
+          keep.stat = c("n", "rsq"),
+          column.labels = c("CGC", "AY", "GOOGL", "EEM"),
+          model.numbers = FALSE,
+          single.row = T,
+          dep.var.caption = "",
+          dep.var.labels.include = F,
+          digits = 3)
+
+
+
+
+``` 
+
+#### These four stocks showed a strong negative correlation with Trump’s chances of losing. As Trump’s chances of winning decreased, the prices of these stocks increased. The R-squared values are all very high which explains that a high percentage of the variation in the stock prices can be explained by Trump’s political market.  
+
+
+
+```{r, echo= FALSE, warning=FALSE, message= FALSE}
+
+functionx1 <- function(x){
+  lm(stockName1[[x]] ~ `Average Trade Price`, 
+              data = bStocks)
+}
+
+
+
+stargazer(functionx1("CGC"),
+          functionx1("AY"),
+          functionx1("GOOGL"),
+          functionx1("EEM"),
+          type = "text",
+          keep.stat = c("n", "rsq"),
+          column.labels = c("CGC", "AY", "GOOGL", "EEM"),
+          model.numbers = FALSE,
+          single.row = T,
+          dep.var.caption = "",
+          dep.var.labels.include = F,
+          digits = 3)
+
+
+````
+
+#### The same four stocks showed the opposite relationship with Biden’s chances of winning. As Biden’s chances of winning increased, the prices of these stocks increased. 
+
+
+#### When we analyze stock prices against Biden's chances of winning, four stocks had the highest correlation: CGC, AY, GOOGL, and EEM. Looking closing at these companies we can conclude that these companies will get the most benefits if Biden wins the election. Let us look at them more closely. 
+
+#### Canopy Growth Corp (CGC), is one of the largest cannabis production companies in the world. They grow and sell a broad range of cannabis products. Biden’s views on marijuana have evolved. He was firmly against legalization until May 2019 when Biden said:” Nobody should be in jail for smoking marijuana”. Trump's administration was against easing restrictions in laws for cannabis.
+
+#### Atlantica Sustainable Infrastructure Plc., (AY) owns and manages renewable energy. This company is in line with Biden’s climate change policy and strategic plan towards 100% renewable energy by the year 2035.
+
+#### Google (GOOGL) is an American technology company. Google was a major donor to the Biden campaign during the 2020 election. Following his inaguration many Google employees were appointed to various federal government positions.
+
+#### Emerging Markets ETF (EEM) is an investment that tracks the results of the Emerging Markets Index. The increase in the emerging markets fund when Biden’s chances increase and Trump’s chances decrease could signal that there was optimism in the market that Biden’s administration would be more willing to work with other countries as opposed to Trump’s “America First” agenda.
+
+#### On the surface, it seems these relationships with the candidates are reasonable. Democrats are more likely to favor renewable energy and the decriminalization of marijuanna, whereas Republicans are against the two policies. Based on our analysis, we can conclude that policies play a major role in stock prices. There is evidence to support that the stock prices of companies that are directly impacted by the platform of a party are positively correlated with that candidates chances of winning the Presidential Election.
+
+
+
+#### Work Cited 
+
+https://www.npr.org/2020/09/30/918500976/trump-derails-first-presidential-debate-with-biden-and-5-other-takeaways 
+
+https://finance.yahoo.com/quote/CGC/?guccounter=1&guce_referrer=aHR0cHM6Ly93d3cuZ29vZ2xlLmNvbS8&guce_referrer_sig=AQAAALf6K1IRAtXhyTv2lW4PhOjmnku5Um-mju-cED_2kVfES2034TatryJujGPLVTPR_1Rn996CFZo7a9_v9SbkULejzcF1SdBnvSgSXNPJItqhiH1BJPMygzCXkHfktiN27kyilYwu_8485h2Li1AOO_yRZDbwWCrOZR6AXv0tlUFU 
+
+https://www.atlantica.com/  
+
+https://finance.yahoo.com/quote/EEM/ 
+
+https://www.demconvention.com/wp-content/uploads/2020/08/2020-07-31-Democratic-Party-Platform-For-Distribution.pdf 
+
+https://prod-cdn-static.gop.com/media/documents/DRAFT_12_FINAL%5B1%5D-ben_1468872234.pdf 
+
+https://www.fool.com/investing/2020/10/17/is-canopy-growth-stock-a-buy/#:~:text=Canadian%20marijuana%20company%20Canopy%20Growth%20(NASDAQ:CGC)%20sells%20everything,stock%20is%20popular%20among%20some%20groups%20of%20investors. 
+
+https://www.protocol.com/tech-political-donors-2020-amazon-apple-facebook-google-microsoft 
+
+https://www.technologyreview.com/2020/11/10/1011902/biden-big-tech-plans-google/ 
+
+https://spectator.org/google-justice-department-renata-hesse/ 
+
+ 
+
+
+
+
+
